@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "ㄷㅈㅇㄹㄴㅇㄹ",
+    "deadline": "2026-08-12",
+    "total_amount": 8,
+    "remaining_amount": 4
+  },
+  {
+    "id": 2,
+    "name": "아릴리리리랑",
+    "deadline": "2026-08-12",
+    "total_amount": 6,
+    "remaining_amount": 6
+  }
+]
