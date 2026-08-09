@@ -125,11 +125,42 @@ def _delete_dday(item_id: int) -> None:
 	_persist_ddays()
 
 
+def _start_timer() -> None:
+	st.session_state["timer_start"] = datetime.now()
+
+
+def _get_timer_message() -> str:
+	timer_start = st.session_state.get("timer_start")
+	if timer_start is None:
+		return "아직 타이머를 시작하지 않았어요"
+
+	elapsed_seconds = int((datetime.now() - timer_start).total_seconds())
+	remaining_seconds = 1500 - elapsed_seconds
+	if remaining_seconds > 0:
+		minutes, seconds = divmod(remaining_seconds, 60)
+		return f"아직 {minutes}분 {seconds}초 남았어요"
+
+	return "다 됐어요! 쉬는 시간이에요 🎉"
+
+
 st.set_page_config(page_title="Study With Me", page_icon="📚", layout="wide")
 _load_session_state()
 
 st.title("Study With Me")
 st.caption("D-day와 오늘 분량을 함께 관리해보세요.")
+
+st.subheader("뽀모도로 타이머")
+timer_col_1, timer_col_2 = st.columns(2)
+with timer_col_1:
+	if st.button("타이머 시작"):
+		_start_timer()
+		st.success("25분 뒤에 알려드릴게요 🔥")
+with timer_col_2:
+	if st.button("경과 확인"):
+		st.info(_get_timer_message())
+
+if "timer_start" not in st.session_state:
+	st.info("아직 타이머를 시작하지 않았어요")
 
 with st.sidebar:
 	st.header("새 D-day 추가")
