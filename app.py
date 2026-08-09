@@ -58,8 +58,9 @@ def _format_dday(days_left: int) -> str:
 	if days_left > 0:
 		return f"D-{days_left}"
 	if days_left == 0:
-		return "D-day"
-	return f"D+{abs(days_left)}"
+		return "D-DAY"
+	# past deadline
+	return f"기한 지남 ({abs(days_left)}일 지남)"
 
 
 def _get_status(item: dict, completed_today: bool) -> str:
@@ -81,6 +82,10 @@ def _load_session_state() -> None:
 
 	if "completed_today" not in st.session_state:
 		st.session_state.completed_today = {}
+
+	# keys for which numeric inputs should be reset on the next run
+	if "reset_keys" not in st.session_state:
+		st.session_state.reset_keys = []
 
 	if st.session_state.get("session_date") != today_key:
 		st.session_state.completed_today = {}
@@ -121,7 +126,6 @@ def _apply_progress(item_id: int, progress_amount: int) -> None:
 def _delete_dday(item_id: int) -> None:
 	st.session_state.ddays = [item for item in st.session_state.ddays if int(item["id"]) != item_id]
 	st.session_state.completed_today.pop(str(item_id), None)
-	st.session_state.pop(f"progress_{item_id}", None)
 	_persist_ddays()
 
 
@@ -183,6 +187,12 @@ sorted_ddays = sorted(st.session_state.ddays, key=lambda item: item["deadline"])
 
 st.subheader("등록된 D-day")
 
+# Process any pending resets for input widgets before rendering them.
+if st.session_state.get("reset_keys"):
+	for k in list(st.session_state.get("reset_keys", [])):
+		st.session_state[k] = 0
+	st.session_state.reset_keys = []
+
 if not sorted_ddays:
 	st.info("아직 등록된 D-day가 없습니다. 사이드바에서 첫 과제를 추가해 보세요.")
 
@@ -196,7 +206,12 @@ for item in sorted_ddays:
 	dday_label = _format_dday(days_left)
 	progress_key = f"progress_{item_id}"
 
-	with st.expander(f"{item['name']} · {dday_label}", expanded=True):
+	# use a warning icon in the title for expired items
+	expander_title = f"{item['name']} · {dday_label}"
+	if days_left < 0:
+		expander_title = f"⚠️ {expander_title}"
+
+	with st.expander(expander_title, expanded=True):
 		left_col, right_col = st.columns(2)
 		with left_col:
 			st.metric("D-day", dday_label)
@@ -207,6 +222,10 @@ for item in sorted_ddays:
 		st.write(f"전체 분량: {int(item['total_amount'])}")
 		st.write(f"남은 분량: {int(item['remaining_amount'])}")
 		st.markdown(f"> {phrase}")
+
+		# If the deadline has passed, show an emphasized warning inside the card
+		if days_left < 0:
+			st.error(f"기한이 지났습니다: {abs(days_left)}일 지남")
 
 		progress_input_col, action_col = st.columns([3, 2])
 		with progress_input_col:
@@ -224,7 +243,8 @@ for item in sorted_ddays:
 
 		if apply_clicked:
 			_apply_progress(item_id, int(progress_amount))
-			st.session_state[progress_key] = 0
+			# schedule the numeric input to be reset on the next run
+			st.session_state.setdefault("reset_keys", []).append(progress_key)
 			st.rerun()
 
 		if delete_clicked:
